@@ -79,9 +79,6 @@ func NewService(ctx context.Context, logger log.ContextLogger, tag string, optio
 			if user.UUID == "" {
 				sl.ReportError(user.UUID, "uuid", "UUID", "required", "")
 			}
-			if user.AlterID == 0 {
-				sl.ReportError(user.AlterID, "alter_id", "AlterID", "required", "")
-			}
 		case "trojan", "shadowsocks", "hysteria", "hysteria2":
 			if user.Password == "" {
 				sl.ReportError(user.Password, "password", "Password", "required", "")
