@@ -154,6 +154,7 @@ func (h *Inbound) Start(stage adapter.StartStage, scope *adapter.Scope) error {
 }
 
 func (h *Inbound) UpdateUsers(users []option.VMessUser) {
+	h.users = users
 	h.service.UpdateUsers(common.MapIndexed(users, func(index int, _ option.VMessUser) int {
 		return index
 	}), common.Map(users, func(it option.VMessUser) string {

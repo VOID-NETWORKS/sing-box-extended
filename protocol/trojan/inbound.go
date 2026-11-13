@@ -169,6 +169,7 @@ func (h *Inbound) Start(stage adapter.StartStage, scope *adapter.Scope) error {
 }
 
 func (h *Inbound) UpdateUsers(users []option.TrojanUser) {
+	h.users = users
 	h.service.UpdateUsers(common.MapIndexed(users, func(index int, _ option.TrojanUser) int {
 		return index
 	}), common.Map(users, func(it option.TrojanUser) string {
