@@ -297,6 +297,16 @@ func (h *Inbound) InterfaceUpdated(ctx context.Context) {
 }
 
 func (h *Inbound) UpdateUsers(users []option.Hysteria2User) {
+	// A connection that authenticated just before this update still carries
+	// an index into the previous list. Never let the list shrink, so that
+	// such an index reads an empty entry instead of panicking.
+	userNameList := common.Map(users, func(it option.Hysteria2User) string {
+		return it.Name
+	})
+	for len(userNameList) < len(h.userNameList) {
+		userNameList = append(userNameList, "")
+	}
+	h.userNameList = userNameList
 	h.service.UpdateUsers(common.MapIndexed(users, func(index int, _ option.Hysteria2User) int {
 		return index
 	}), common.Map(users, func(it option.Hysteria2User) string {

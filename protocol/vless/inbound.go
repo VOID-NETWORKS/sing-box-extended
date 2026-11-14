@@ -171,7 +171,14 @@ func (h *Inbound) Start(stage adapter.StartStage, scope *adapter.Scope) error {
 }
 
 func (h *Inbound) UpdateUsers(users []option.VLESSUser) {
-	h.users = users
+	// A connection that authenticated just before this update still carries
+	// an index into the previous list. Never let the list shrink, so that
+	// such an index reads an empty entry instead of panicking.
+	userList := append([]option.VLESSUser(nil), users...)
+	for len(userList) < len(h.users) {
+		userList = append(userList, option.VLESSUser{})
+	}
+	h.users = userList
 	h.service.UpdateUsers(common.MapIndexed(users, func(index int, _ option.VLESSUser) int {
 		return index
 	}), common.Map(users, func(it option.VLESSUser) string {

@@ -172,6 +172,16 @@ func (h *Inbound) Start(stage adapter.StartStage, scope *adapter.Scope) error {
 }
 
 func (h *Inbound) UpdateUsers(users []option.HysteriaUser) {
+	// A connection that authenticated just before this update still carries
+	// an index into the previous list. Never let the list shrink, so that
+	// such an index reads an empty entry instead of panicking.
+	userNameList := common.Map(users, func(it option.HysteriaUser) string {
+		return it.Name
+	})
+	for len(userNameList) < len(h.userNameList) {
+		userNameList = append(userNameList, "")
+	}
+	h.userNameList = userNameList
 	h.service.UpdateUsers(common.MapIndexed(users, func(index int, _ option.HysteriaUser) int {
 		return index
 	}), common.Map(users, func(it option.HysteriaUser) string {
