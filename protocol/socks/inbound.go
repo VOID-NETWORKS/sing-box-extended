@@ -73,6 +73,13 @@ func (h *Inbound) Start(stage adapter.StartStage, scope *adapter.Scope) error {
 }
 
 func (h *Inbound) UpdateUsers(users []auth.User) {
+	if h.authenticator == nil {
+		// NewAuthenticator returns nil for an empty list, and a nil
+		// authenticator means "no authentication required". An inbound whose
+		// users are managed at runtime must reject everyone while it has no
+		// users, so it needs a real authenticator even when the list is empty.
+		h.authenticator = auth.NewAuthenticator([]auth.User{{}})
+	}
 	h.authenticator.UpdateUsers(users)
 }
 

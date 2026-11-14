@@ -29,6 +29,9 @@ func (m *MixedManager) AddUserManager(inbound adapter.Inbound) error {
 		inbound:  inbound.(*mixed.Inbound),
 		usersMap: make(map[string]auth.User),
 	}
+	// Without users the inbound would accept anyone. Close it until the
+	// manager delivers the real list.
+	m.inbounds[inbound.Tag()].inbound.UpdateUsers(nil)
 	return nil
 }
 
