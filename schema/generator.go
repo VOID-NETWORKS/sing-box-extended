@@ -98,7 +98,9 @@ func (g *generator) Describe(valueType reflect.Type) (*Node, error) {
 	}
 	pointerType := reflect.PointerTo(valueType)
 	if pointerType.Implements(jsonUnmarshalerType) || pointerType.Implements(contextUnmarshalerType) {
-		return nil, E.New("unmapped custom JSON type ", valueType.String(), " at ", strings.Join(g.path, "."))
+		// A custom JSON type without a mapping, such as one an extension
+		// added: accept any value there rather than fail the whole schema.
+		return &Node{}, nil
 	}
 	if pointerType.Implements(textUnmarshalerType) {
 		return StringNode(), nil
