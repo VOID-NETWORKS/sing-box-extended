@@ -176,3 +176,21 @@ func connChecker(ctx context.Context, closeFunc func() error) {
 	<-ctx.Done()
 	closeFunc()
 }
+
+var (
+	_ adapter.ConnectionHandler       = (*Outbound)(nil)
+	_ adapter.PacketConnectionHandler = (*Outbound)(nil)
+)
+
+// NewConnection lets the router hand a connection over to the limiter
+// instead of dialing through it, so that the connection is routed by the
+// limiter's own route rules. Without it the router dials the limiter's final
+// outbound directly and the rules are never consulted.
+func (h *Outbound) NewConnection(ctx context.Context, conn net.Conn, metadata adapter.InboundContext, onClose N.CloseHandlerFunc) {
+	h.NewConnectionEx(ctx, conn, metadata, onClose)
+}
+
+// NewPacketConnection is NewConnection for UDP.
+func (h *Outbound) NewPacketConnection(ctx context.Context, conn N.PacketConn, metadata adapter.InboundContext, onClose N.CloseHandlerFunc) {
+	h.NewPacketConnectionEx(ctx, conn, metadata, onClose)
+}
