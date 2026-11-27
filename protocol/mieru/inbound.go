@@ -40,7 +40,7 @@ type Inbound struct {
 	router    adapter.ConnectionRouterEx
 	logger    log.ContextLogger
 	listener  *listener.Listener
-	server    mieruserver.Server
+	server    *server
 	userNames []string
 
 	mu sync.Mutex
@@ -52,8 +52,8 @@ func NewInbound(ctx context.Context, router adapter.Router, logger log.ContextLo
 		return nil, fmt.Errorf("failed to build mieru server config: %w", err)
 	}
 
-	s := mieruserver.NewServer()
-	if err := s.Store(config); err != nil {
+	s, err := newServer(config)
+	if err != nil {
 		return nil, fmt.Errorf("failed to store mieru server config: %w", err)
 	}
 
@@ -73,6 +73,24 @@ func NewInbound(ctx context.Context, router adapter.Router, logger log.ContextLo
 	})
 
 	return inboundInstance, nil
+}
+
+// UpdateUsers replaces the users while the inbound runs. Established
+// connections keep working.
+func (h *Inbound) UpdateUsers(users []option.MieruUser) error {
+	list := make([]*mierupb.User, 0, len(users))
+	names := make([]string, 0, len(users))
+	for _, user := range users {
+		list = append(list, &mierupb.User{Name: proto.String(user.Name), Password: proto.String(user.Password)})
+		names = append(names, user.Name)
+	}
+	if err := h.server.SetUsers(list); err != nil {
+		return err
+	}
+	h.mu.Lock()
+	h.userNames = names
+	h.mu.Unlock()
+	return nil
 }
 
 func (h *Inbound) Start(stage adapter.StartStage, scope *adapter.Scope) error {

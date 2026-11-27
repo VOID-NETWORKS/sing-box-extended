@@ -68,7 +68,7 @@ type UserCreate struct {
 	SquadIDs       []int    `json:"squad_ids" validate:"required,min=1"`
 	Username       string   `json:"username" validate:"required"`
 	Inbound        string   `json:"inbound" validate:"required"`
-	Type           string   `json:"type" validate:"required,oneof=anytls http hysteria hysteria2 mixed mtproxy naive socks ssh trojan trusttunnel tuic vless vmess"`
+	Type           string   `json:"type" validate:"required,oneof=anytls http hysteria hysteria2 mieru mixed mtproxy naive shadowsocks snell socks ssh trojan trusttunnel tuic vless vmess"`
 	UUID           string   `json:"uuid" validate:"omitempty,uuid4"`
 	Password       string   `json:"password" validate:"omitempty"`
 	Secret         string   `json:"secret" validate:"omitempty"`

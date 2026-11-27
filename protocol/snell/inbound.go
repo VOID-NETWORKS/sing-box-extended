@@ -4,6 +4,7 @@ import (
 	"context"
 	"net"
 	"os"
+	"sync"
 
 	"github.com/sagernet/sing-box/adapter"
 	"github.com/sagernet/sing-box/adapter/inbound"
@@ -35,7 +36,47 @@ type Inbound struct {
 	logger   logger.ContextLogger
 	listener *listener.Listener
 	service  snellprotocol.Service
-	users    []option.SnellUser
+	// multi is set when the inbound was started with users; only then can
+	// they be replaced at run time.
+	multi       bool
+	usersAccess sync.RWMutex
+	users       []option.SnellUser
+}
+
+type multiService interface {
+	UpdateUsers(userList []int, keyList [][]byte) error
+}
+
+// UpdateUsers replaces the users of an inbound started with users, keeping
+// connections already established.
+func (h *Inbound) UpdateUsers(users []option.SnellUser) error {
+	service, ok := h.service.(multiService)
+	if !h.multi || !ok {
+		return E.New("snell inbound ", h.Tag(), " was started without users")
+	}
+	userList := make([]int, len(users))
+	keyList := make([][]byte, len(users))
+	for index, user := range users {
+		userList[index] = index
+		keyList[index] = []byte(user.UserKey)
+	}
+	h.usersAccess.Lock()
+	defer h.usersAccess.Unlock()
+	if err := service.UpdateUsers(userList, keyList); err != nil {
+		return err
+	}
+	h.users = users
+	return nil
+}
+
+// userName returns the name of the user at index, as known right now.
+func (h *Inbound) userName(index int) (string, bool) {
+	h.usersAccess.RLock()
+	defer h.usersAccess.RUnlock()
+	if index < 0 || index >= len(h.users) {
+		return "", false
+	}
+	return h.users[index].Name, true
 }
 
 func NewInbound(ctx context.Context, router adapter.Router, logger log.ContextLogger, tag string, options option.SnellInboundOptions) (adapter.Inbound, error) {
@@ -44,6 +85,7 @@ func NewInbound(ctx context.Context, router adapter.Router, logger log.ContextLo
 		router:  uot.NewRouter(router, logger),
 		logger:  logger,
 		users:   options.Users,
+		multi:   len(options.Users) > 0,
 	}
 	var userList []int
 	var keyList [][]byte
@@ -168,13 +210,17 @@ func (h *Inbound) NewPacketConnectionEx(ctx context.Context, conn N.PacketConn, 
 func (h *Inbound) newConnection(ctx context.Context, conn net.Conn, metadata adapter.InboundContext, onClose N.CloseHandlerFunc) {
 	metadata.Inbound = h.Tag()
 	metadata.InboundType = h.Type()
-	if len(h.users) > 0 {
+	if h.multi {
 		userIndex, loaded := auth.UserFromContext[int](ctx)
 		if !loaded {
 			N.CloseOnHandshakeFailure(conn, onClose, os.ErrInvalid)
 			return
 		}
-		user := h.users[userIndex].Name
+		user, known := h.userName(userIndex)
+		if !known {
+			N.CloseOnHandshakeFailure(conn, onClose, os.ErrInvalid)
+			return
+		}
 		if user == "" {
 			user = F.ToString(userIndex)
 		} else {
@@ -192,13 +238,17 @@ func (h *Inbound) newPacketConnection(ctx context.Context, conn N.PacketConn, me
 	metadata.InboundType = h.Type()
 	// The snell client in Surge rejects UDP responses with domain addresses.
 	metadata.UDPDisableDomainUnmapping = true
-	if len(h.users) > 0 {
+	if h.multi {
 		userIndex, loaded := auth.UserFromContext[int](ctx)
 		if !loaded {
 			N.CloseOnHandshakeFailure(conn, onClose, os.ErrInvalid)
 			return
 		}
-		user := h.users[userIndex].Name
+		user, known := h.userName(userIndex)
+		if !known {
+			N.CloseOnHandshakeFailure(conn, onClose, os.ErrInvalid)
+			return
+		}
 		if user == "" {
 			user = F.ToString(userIndex)
 		} else {

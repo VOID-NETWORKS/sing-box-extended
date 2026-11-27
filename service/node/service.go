@@ -81,6 +81,9 @@ func (s *Service) Start(stage adapter.StartStage, scope *adapter.Scope) error {
 		"vless":       inbound.NewVLESSManager(),
 		"vmess":       inbound.NewVMessManager(),
 		"ssh":         inbound.NewSSHManager(),
+		"shadowsocks": inbound.NewShadowsocksManager(),
+		"snell":       inbound.NewSnellManager(),
+		"mieru":       inbound.NewMieruManager(),
 	}
 	s.connectionManager = limiter.NewConnectionLimiterManager(s.ctx, nodeManager, s.logger)
 	s.bandwidthManager = limiter.NewBandwidthLimiterManager(s.ctx, nodeManager, s.logger)
